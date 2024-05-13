@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analysis Results</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+<body>
+    <h1>Stock VaR Analysis</h1>
+    <div>
+        <label>Shots per run: <input type="number" id="shots" value="25000"></label>
+        <label>History days per signal: <input type="number" id="historyDays" value="91"></label>
+        <label>Signal type:
+            <select id="type">
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+            </select>
+        </label>
+        <label>Profit/Loss time horizon: <input type="number" id="profitLossDays" value="6"></label>
+        <button onclick="performAnalysis()">Run Analysis</button>
+        <button id="showResults" onclick="fetchAndDisplayResults()" style="display:none;">Show Results</button>
+    </div>
+    <div id="results"></div>
+
+    <script>
+        var lastResponse = null; // Store the last API response globally
+
+        function performAnalysis() {
+            var jsonData = {
+                shots: parseInt(document.getElementById('shots').value),
+                historyDays: parseInt(document.getElementById('historyDays').value),
+                type: document.getElementById('type').value,
+                profitLossDays: parseInt(document.getElementById('profitLossDays').value)
+            };
+
+            $.ajax({
+                url: 'https://cloudcwfinal.ue.r.appspot.com/analyse', // Relative URL for the analysis endpoint
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(jsonData),
+                success: function(response) {
+                    console.log("Analysis Success:", response);
+                    lastResponse = response;
+                    document.getElementById('results').innerHTML = '<p>Data Analysed. Click "Show Results" to view the VaR results.</p>';
+                    document.getElementById('showResults').style.display = 'inline'; // Show the results button
+                },
+                error: function(xhr, status, error) {
+                    document.getElementById('results').innerHTML = '<p>Error performing analysis. Ensure API is available and correctly configured.</p>';
+                    console.error("Analysis Error:", xhr.responseText);
+                }
+            });
+        }
+
+        function fetchAndDisplayResults() {
+            if (lastResponse) {
+                $.ajax({
+                    url: '/get_sig_vars9599', // Endpoint to fetch VaR results
+                    type: 'GET',
+                    success: function(data) {
+                        renderResultsTable(data);
+                    },
+                    error: function() {
+                        document.getElementById('results').innerHTML = '<p>Error fetching results.</p>';
+                    }
+                });
+            } else {
+                document.getElementById('results').innerHTML = '<p>No data to display. Run analysis first.</p>';
+            }
+        }
+
+        function renderResultsTable(data) {
+            var var95 = data.var95;
+            var var99 = data.var99;
+            var tableHtml = '<table border="1"><tr><th>Simulation #</th><th>VaR 95%</th><th>VaR 99%</th></tr>';
+
+            for (var i = 0; i < var95.length; i++) {
+                tableHtml += `<tr><td>${i + 1}</td><td>${var95[i]}</td><td>${var99[i]}</td></tr>`;
+            }
+
+            tableHtml += '</table>';
+            document.getElementById('results').innerHTML = tableHtml;
+        }
+    </script>
+</body>
+</html>
